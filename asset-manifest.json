@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/energyGraphs/static/css/main.5febf537.css",
+    "main.js": "/energyGraphs/static/js/main.24def1ce.js",
+    "static/js/453.6e09b5c8.chunk.js": "/energyGraphs/static/js/453.6e09b5c8.chunk.js",
+    "index.html": "/energyGraphs/index.html",
+    "main.5febf537.css.map": "/energyGraphs/static/css/main.5febf537.css.map",
+    "main.24def1ce.js.map": "/energyGraphs/static/js/main.24def1ce.js.map",
+    "453.6e09b5c8.chunk.js.map": "/energyGraphs/static/js/453.6e09b5c8.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.5febf537.css",
+    "static/js/main.24def1ce.js"
+  ]
+}
