@@ -12,7 +12,7 @@ import DeviceTimeline from './components/Timeline';
 
 function App() {
   return (
-    <Router>
+    <Router basename="/energyGraphs">
       <div className="container mx-auto p-4">
         <header className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Home Energy Monitoring Dashboard</h1>
