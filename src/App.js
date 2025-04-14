@@ -7,6 +7,7 @@ import ImprovedControlPointAnalysis from './components/ImprovedControlpointAnaly
 import TimeHeatmap from './components/Heatmap';
 import MonthlyTrend from './components/MonthlyTrends';
 import UsageAnomalyDetection from './components/UsageAnomallyDetection';
+import DeviceTimeline from './components/Timeline';
 // import TimeHeatmap from './components/TimeHeatmap';
 // import MonthlyTrend from './components/MonthlyTrend';
 // import StandbyPowerAnalysis from './components/StandbyPowerAnalysis';
@@ -97,6 +98,15 @@ function App() {
               Anomaly Detection
             </button>
           </li>
+
+          <li>
+            <button 
+              className={`inline-block p-4 rounded-t-lg ${activeTab === 'timeline' ? 'text-blue-600 border-b-2 border-blue-600 active' : 'text-gray-500 hover:text-gray-600 hover:border-gray-300'}`}
+              onClick={() => setActiveTab('timeline')}
+            >
+              Network Timeline
+            </button>
+          </li>
         </ul>
       </div>
 
@@ -111,6 +121,7 @@ function App() {
         {activeTab === 'monthly' && <MonthlyTrend />}
         {/* {activeTab === 'standby' && <StandbyPowerAnalysis />} */}
         {activeTab === 'anomaly' && <UsageAnomalyDetection />} 
+        {activeTab === 'timeline' && <DeviceTimeline /> }
       </div>
 
       {/* Footer */}
