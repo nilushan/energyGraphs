@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/energyGraphs/static/css/main.eb3ebea3.css",
-    "main.js": "/energyGraphs/static/js/main.2de77985.js",
+    "main.js": "/energyGraphs/static/js/main.27339b29.js",
     "static/js/453.6e09b5c8.chunk.js": "/energyGraphs/static/js/453.6e09b5c8.chunk.js",
     "index.html": "/energyGraphs/index.html",
     "main.eb3ebea3.css.map": "/energyGraphs/static/css/main.eb3ebea3.css.map",
-    "main.2de77985.js.map": "/energyGraphs/static/js/main.2de77985.js.map",
+    "main.27339b29.js.map": "/energyGraphs/static/js/main.27339b29.js.map",
     "453.6e09b5c8.chunk.js.map": "/energyGraphs/static/js/453.6e09b5c8.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.eb3ebea3.css",
-    "static/js/main.2de77985.js"
+    "static/js/main.27339b29.js"
   ]
 }
