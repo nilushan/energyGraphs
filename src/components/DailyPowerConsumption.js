@@ -9,7 +9,8 @@ const DailyPowerConsumption = () => {
   const [dateRange, setDateRange] = useState({ start: '' });
   const [isLoading, setIsLoading] = useState(true);
   const [controlPointFilter, setControlPointFilter] = useState('');
-  
+  const [displayMode, setDisplayMode] = useState('rooms'); // 'rooms' or 'controlPoints'
+
   useEffect(() => {
     // Generate the current date
     const today = new Date();
@@ -43,13 +44,15 @@ const DailyPowerConsumption = () => {
     
     setControlPoints(generatedControlPoints);
     
-    // Initially select a subset of control points (first 15)
-    setSelectedControlPoints(generatedControlPoints.slice(0, 15).map(cp => cp.id));
-    
     // Set all rooms as selected initially
-    setSelectedRooms([...new Set(generatedControlPoints.map(cp => cp.roomName))]);
+    const allRooms = [...new Set(generatedControlPoints.map(cp => cp.roomName))];
+    setSelectedRooms(allRooms);
     
-    generateData(generatedControlPoints.slice(0, 15));
+    // Select all control points from all rooms
+    const allControlPointIds = generatedControlPoints.map(cp => cp.id);
+    setSelectedControlPoints(allControlPointIds);
+    
+    generateData(generatedControlPoints);
   }, []);
   
   useEffect(() => {
@@ -73,6 +76,12 @@ const DailyPowerConsumption = () => {
         total: 0
       };
       
+      // Initialize room totals
+      const roomTotals = {};
+      selectedRooms.forEach(room => {
+        roomTotals[`room_${room.replace(/\s+/g, '_')}`] = 0;
+      });
+
       // Generate data for each selected control point
       selectedCPs.forEach(cp => {
         // Create a realistic power consumption pattern
@@ -97,8 +106,18 @@ const DailyPowerConsumption = () => {
           usage = 10 + Math.random() * 40;
         }
         
-        dataPoint[cp.id] = Math.round(usage * 10) / 10;
-        dataPoint.total += dataPoint[cp.id];
+        const roundedUsage = Math.round(usage * 10) / 10;
+        dataPoint[cp.id] = roundedUsage;
+        dataPoint.total += roundedUsage;
+        
+        // Add to room total
+        const roomKey = `room_${cp.roomName.replace(/\s+/g, '_')}`;
+        roomTotals[roomKey] = (roomTotals[roomKey] || 0) + roundedUsage;
+      });
+      
+      // Add room totals to dataPoint
+      Object.entries(roomTotals).forEach(([key, value]) => {
+        dataPoint[key] = Math.round(value * 10) / 10;
       });
       
       // Round total
@@ -109,13 +128,35 @@ const DailyPowerConsumption = () => {
     setData(sampleData);
     setIsLoading(false);
   };
-  
+
   const handleRoomToggle = (roomName) => {
+    const isCurrentlySelected = selectedRooms.includes(roomName);
+    
+    // Update selected rooms
     setSelectedRooms(prev => 
-      prev.includes(roomName)
+      isCurrentlySelected
         ? prev.filter(r => r !== roomName)
         : [...prev, roomName]
     );
+    
+    // Update control points for the room
+    const roomCPs = controlPoints
+      .filter(cp => cp.roomName === roomName)
+      .map(cp => cp.id);
+      
+    setSelectedControlPoints(prev => {
+      if (isCurrentlySelected) {
+        // Remove control points for this room
+        return prev.filter(id => {
+          const cp = controlPoints.find(cp => cp.id === id);
+          return cp && cp.roomName !== roomName;
+        });
+      } else {
+        // Add control points for this room
+        const existing = prev.filter(id => !controlPoints.find(cp => cp.id === id && cp.roomName === roomName));
+        return [...existing, ...roomCPs];
+      }
+    });
   };
   
   const handleControlPointToggle = (cpId) => {
@@ -132,32 +173,18 @@ const DailyPowerConsumption = () => {
     });
   };
   
+  const handleDisplayModeChange = (mode) => {
+    setDisplayMode(mode);
+  };
+
   const selectAllRooms = () => {
     setSelectedRooms([...new Set(controlPoints.map(cp => cp.roomName))]);
+    setSelectedControlPoints([...new Set(controlPoints.map(cp => cp.id))]);
   };
   
   const deselectAllRooms = () => {
     setSelectedRooms([]);
-  };
-  
-  const selectRoomControlPoints = (roomName) => {
-    const roomCPs = controlPoints
-      .filter(cp => cp.roomName === roomName)
-      .map(cp => cp.id);
-    
-    setSelectedControlPoints(prev => {
-      const existing = prev.filter(id => !controlPoints.find(cp => cp.id === id && cp.roomName === roomName));
-      return [...existing, ...roomCPs];
-    });
-  };
-  
-  const deselectRoomControlPoints = (roomName) => {
-    setSelectedControlPoints(prev => 
-      prev.filter(id => {
-        const cp = controlPoints.find(cp => cp.id === id);
-        return cp && cp.roomName !== roomName;
-      })
-    );
+    setSelectedControlPoints([]);
   };
   
   // Get unique rooms
@@ -176,117 +203,119 @@ const DailyPowerConsumption = () => {
     <div className="bg-white p-4 rounded-lg shadow-md">
       <h2 className="text-xl font-bold mb-4 text-gray-800">Daily Power Consumption</h2>
       
-      {/* Date selector */}
+      {/* Date selector and display mode selector */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-2">
-          <label className="text-sm font-medium">Date:</label>
-          <input 
-            type="date" 
-            name="start"
-            value={dateRange.start}
-            onChange={handleDateChange}
-            className="border rounded p-1 text-sm"
-          />
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium">Date:</label>
+            <input 
+              type="date" 
+              name="start"
+              value={dateRange.start}
+              onChange={handleDateChange}
+              className="border rounded p-1 text-sm"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium">Display:</label>
+            <select
+              value={displayMode}
+              onChange={(e) => handleDisplayModeChange(e.target.value)}
+              className="border rounded p-1 text-sm"
+            >
+              <option value="total">Total Only</option>
+              <option value="rooms">Rooms</option>
+              <option value="controlPoints">Control Points</option>
+            </select>
+          </div>
         </div>
         
         <div className="text-sm font-medium bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
           Total Usage: {Math.round(totalDailyUsage * 10) / 10} kWh
         </div>
       </div>
-      
-      {/* Room selection */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-medium text-sm">Rooms Selected: {selectedRooms.length} of {uniqueRooms.length}</h3>
-          <div className="flex space-x-2">
-            <button 
-              onClick={selectAllRooms}
-              className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
-            >
-              Select All
-            </button>
-            <button 
-              onClick={deselectAllRooms}
-              className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
-            >
-              Deselect All
-            </button>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {uniqueRooms.map((room) => (
-            <div key={room} className="flex items-center">
-              <button
-                onClick={() => handleRoomToggle(room)}
-                className={`px-2 py-1 text-xs rounded-full ${
-                  selectedRooms.includes(room)
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                {room}
-              </button>
-              <div className="ml-1 flex">
+
+      {/* Room and Control Point selection sections - only show if not in total mode */}
+      {displayMode !== 'total' && (
+        <>
+          {/* Room selection */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-medium text-sm">Rooms Selected: {selectedRooms.length} of {uniqueRooms.length}</h3>
+              <div className="flex space-x-2">
                 <button 
-                  onClick={() => selectRoomControlPoints(room)} 
-                  className="text-xs text-blue-600 hover:text-blue-800 px-1"
-                  title={`Select all control points in ${room}`}
+                  onClick={selectAllRooms}
+                  className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
                 >
-                  +
+                  Select All
                 </button>
                 <button 
-                  onClick={() => deselectRoomControlPoints(room)} 
-                  className="text-xs text-red-600 hover:text-red-800 px-1"
-                  title={`Deselect all control points in ${room}`}
+                  onClick={deselectAllRooms}
+                  className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
                 >
-                  -
+                  Deselect All
                 </button>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-      
-      {/* Control points selection */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-medium text-sm">Control Points Selected: {selectedControlPoints.length} of {controlPoints.length}</h3>
-          <input
-            type="text"
-            placeholder="Filter control points..."
-            value={controlPointFilter}
-            onChange={e => setControlPointFilter(e.target.value)}
-            className="border rounded px-2 py-1 text-sm"
-          />
-        </div>
-        
-        <div className="max-h-32 overflow-y-auto border rounded p-2">
-          <div className="flex flex-wrap gap-2">
-            {filteredControlPoints.slice(0, 100).map((cp) => (
-              <button
-                key={cp.id}
-                onClick={() => handleControlPointToggle(cp.id)}
-                className={`px-2 py-1 text-xs rounded-full ${
-                  selectedControlPoints.includes(cp.id)
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-200 text-gray-700'
-                }`}
-                title={`${cp.deviceName} in ${cp.roomName}`}
-              >
-                {cp.name}
-              </button>
-            ))}
-            {filteredControlPoints.length > 100 && (
-              <div className="px-2 py-1 text-xs text-gray-500">
-                {filteredControlPoints.length - 100} more control points not shown. Use the filter to narrow results.
-              </div>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {uniqueRooms.map((room) => (
+                <button
+                  key={room}
+                  onClick={() => handleRoomToggle(room)}
+                  className={`px-2 py-1 text-xs rounded-full ${
+                    selectedRooms.includes(room)
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  {room}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      </div>
+          
+          {/* Control points selection */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-medium text-sm">Control Points Selected: {selectedControlPoints.length} of {controlPoints.length}</h3>
+              <input
+                type="text"
+                placeholder="Filter control points..."
+                value={controlPointFilter}
+                onChange={e => setControlPointFilter(e.target.value)}
+                className="border rounded px-2 py-1 text-sm"
+              />
+            </div>
+            
+            <div className="max-h-32 overflow-y-auto border rounded p-2">
+              <div className="flex flex-wrap gap-2">
+                {filteredControlPoints.slice(0, 100).map((cp) => (
+                  <button
+                    key={cp.id}
+                    onClick={() => handleControlPointToggle(cp.id)}
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      selectedControlPoints.includes(cp.id)
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-200 text-gray-700'
+                    }`}
+                    title={`${cp.deviceName} in ${cp.roomName}`}
+                  >
+                    {cp.name}
+                  </button>
+                ))}
+                {filteredControlPoints.length > 100 && (
+                  <div className="px-2 py-1 text-xs text-gray-500">
+                    {filteredControlPoints.length - 100} more control points not shown. Use the filter to narrow results.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
       
       {/* Chart */}
-      <div className="h-64">
+      <div className="h-96 mt-4">
         {isLoading ? (
           <div className="h-full flex items-center justify-center">
             <p>Loading data...</p>
@@ -303,15 +332,33 @@ const DailyPowerConsumption = () => {
               <Tooltip 
                 formatter={(value, name) => {
                   if (name === 'total') return [`${value} W`, 'Total Power Usage'];
+                  if (name.startsWith('room_')) {
+                    const roomName = name.replace('room_', '').replace(/_/g, ' ');
+                    return [`${value} W`, `${roomName} Total`];
+                  }
                   const cp = controlPoints.find(cp => cp.id === name);
                   return [`${value} W`, cp ? cp.name : name];
                 }}
               />
-              <Legend formatter={(value) => {
-                if (value === 'total') return 'Total Power Usage';
-                const cp = controlPoints.find(cp => cp.id === value);
-                return cp ? cp.name : value;
-              }}/>
+              <Legend 
+                layout="horizontal"
+                align="center"
+                verticalAlign="bottom"
+                formatter={(value) => {
+                  if (value === 'total') return 'Total Power Usage';
+                  if (value.startsWith('room_')) {
+                    return value.replace('room_', '').replace(/_/g, ' ') + ' Total';
+                  }
+                  const cp = controlPoints.find(cp => cp.id === value);
+                  return cp ? cp.name : value;
+                }}
+                wrapperStyle={{
+                  paddingTop: '20px',
+                  overflowY: 'auto',
+                  maxHeight: '100px',
+                  width: '100%'
+                }}
+              />
               <Line 
                 type="monotone" 
                 dataKey="total" 
@@ -320,8 +367,20 @@ const DailyPowerConsumption = () => {
                 activeDot={{ r: 8 }} 
                 name="total"
               />
-              {selectedControlPoints.length <= 5 && selectedControlPoints.map((cpId, index) => {
-                // Only show individual lines if 5 or fewer are selected to avoid cluttering
+              {displayMode === 'rooms' && selectedRooms.map((room, index) => {
+                const colors = ['#82ca9d', '#ffc658', '#ff8042', '#a4de6c', '#d0ed57'];
+                return (
+                  <Line 
+                    key={`room_${room}`}
+                    type="monotone" 
+                    dataKey={`room_${room.replace(/\s+/g, '_')}`} 
+                    stroke={colors[index % colors.length]} 
+                    strokeWidth={2}
+                    name={`room_${room.replace(/\s+/g, '_')}`}
+                  />
+                );
+              })}
+              {displayMode === 'controlPoints' && selectedControlPoints.map((cpId, index) => {
                 const colors = ['#82ca9d', '#ffc658', '#ff8042', '#a4de6c', '#d0ed57'];
                 return (
                   <Line 
